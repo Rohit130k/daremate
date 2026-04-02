@@ -14,10 +14,18 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { 
   maxHttpBufferSize: 1e7, // 10MB
-  cors: { origin: '*', methods: ['GET', 'POST'] } 
+  cors: { 
+    origin: process.env.CLIENT_URL || '*', 
+    methods: ['GET', 'POST'],
+    credentials: true
+  } 
 });
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.CLIENT_URL || '*',
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
 app.use(express.json());
 
 // ── Load questions ────────────────────────────────────────────────────────

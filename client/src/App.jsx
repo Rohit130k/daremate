@@ -10,7 +10,7 @@ import { io } from 'socket.io-client';
 import Landing from './Landing.jsx';
 import MiniGames from './MiniGames.jsx';
 
-const SOCKET_URL = 'http://192.168.0.104:5000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 const EMOJIS = ['❤️', '😂', '😮', '😢', '🔥', '👏', '💯', '🎯'];
 
 const CATEGORY_META = {
@@ -146,7 +146,12 @@ export default function App() {
 
   /* ── Socket Setup ─────────────────────────────────────── */
   useEffect(() => {
-    const s = io(SOCKET_URL, { transports: ['websocket'] });
+    const s = io(SOCKET_URL, { 
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000
+    });
     setSocket(s);
     socketRef.current = s;
 
