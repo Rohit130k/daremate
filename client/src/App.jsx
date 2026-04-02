@@ -16,8 +16,8 @@ const EMOJIS = ['❤️', '😂', '😮', '😢', '🔥', '👏', '💯', '🎯'
 const CATEGORY_META = {
   Funny: { icon: '😂', color: '#FBBF24', bg: 'rgba(251,191,36,0.1)', border: 'rgba(251,191,36,0.3)' },
   Romantic: { icon: '❤️', color: '#F472B6', bg: 'rgba(244,114,182,0.1)', border: 'rgba(244,114,182,0.3)' },
-  Spicy: { icon: '🔥', color: '#EF4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)' },
-  Emotional: { icon: '🧠', color: '#60A5FA', bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.3)' },
+  Strip: { icon: '👗', color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.3)' },
+  '18+': { icon: '🔞', color: '#EF4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)' },
 };
 
 /* ── Timer Ring ── */
