@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@theme {
+  --font-inter: "Inter", sans-serif;
+  --font-outfit: "Outfit", sans-serif;
+
+  --color-midnight: #050505;
+  --color-electric-purple: #8B5CF6;
+  --color-radiant-gold: #F59E0B;
+
+  /* Category Colors */
+  --color-cat-funny: #FBBF24;
+  --color-cat-romantic: #F472B6;
+  --color-cat-spicy: #EF4444;
+  --color-cat-emotional: #60A5FA;
+}
+
+@layer base {
+  body {
+    @apply bg-midnight text-white font-inter antialiased;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(139, 92, 246, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(245, 158, 11, 0.1) 0px, transparent 50%),
+      radial-gradient(at 50% 100%, rgba(139, 92, 246, 0.05) 0px, transparent 50%);
+    min-height: 100vh;
+  }
+
+  * {
+    @apply selection:bg-electric-purple/30;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl;
+  }
+
+  .premium-input {
+    @apply w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-electric-purple/50 focus:border-electric-purple/50 transition-all duration-300 placeholder:text-white/30;
+  }
+
+  .premium-button-primary {
+    @apply px-8 py-3 bg-electric-purple hover:bg-electric-purple/90 text-white font-semibold rounded-xl shadow-lg shadow-electric-purple/20 transition-all duration-300 active:scale-95;
+  }
+
+  .premium-button-secondary {
+    @apply px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold rounded-xl transition-all duration-300 active:scale-95;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-electric-purple to-radiant-gold bg-clip-text text-transparent font-outfit;
+  }
+}
+
+/* Custom Animations */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2.5s infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(139, 92, 246, 0.4); }
+  50% { box-shadow: 0 0 28px rgba(139, 92, 246, 0.8), 0 0 60px rgba(139, 92, 246, 0.2); }
+}
+
+.animate-glow {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
