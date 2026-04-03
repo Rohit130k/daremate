@@ -14,6 +14,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { 
   maxHttpBufferSize: 1e7, // 10MB
+  pingTimeout: 60000,     // Wait 60s before considering a disconnect
+  pingInterval: 25000,    // Ping every 25s
   cors: { 
     origin: process.env.CLIENT_URL || '*', 
     methods: ['GET', 'POST'],
@@ -108,8 +110,9 @@ io.on('connection', (socket) => {
   socket.on('start_game', (code) => {
     const room = getRoom(code);
     if (!room) return;
-    // Only the first player (host) can start
-    if (room.players[0]?.id !== socket.id) return;
+    // Only the first online player (acting host) can start
+    const actingHost = room.players.find(p => p.status === 'online');
+    if (actingHost?.id !== socket.id) return;
     room.gameState = 'active';
     room.currentTurn = 0;
     room.round = 1;
@@ -156,10 +159,12 @@ io.on('connection', (socket) => {
     const room = getRoom(code);
     if (!room) return;
     const player = room.players[room.currentTurn];
-    // Special case: timer expiration calls this automatically from server or client
-    // We allow it if the socket is the active player or it's a system-initiated event (if we had those)
-    // For now we enforce socket.id check for user-clicked skip. 
-    if (!player || player.id !== socket.id) return;
+    if (!player) return;
+
+    // Allow skip if it's the active player OR if they are offline and the "acting host" (first online player) clicks skip
+    const actingHost = room.players.find(p => p.status === 'online');
+    const isHost = actingHost?.id === socket.id;
+    if (player.id !== socket.id && !(isHost && player.status === 'offline')) return;
 
     if (room.stats[socket.id]) room.stats[socket.id].skips++;
     player.score = Math.max(0, (player.score ?? 0) - 5);
@@ -204,6 +209,9 @@ io.on('connection', (socket) => {
   socket.on('end_game', (code) => {
     const room = getRoom(code);
     if (!room) return;
+    const actingHost = room.players.find(p => p.status === 'online');
+    if (actingHost?.id !== socket.id) return;
+
     const sorted = [...room.players].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     const mostDares = room.players.reduce((a, b) => (room.stats[b.id]?.dares||0) > (room.stats[a.id]?.dares||0) ? b : a, room.players[0]);
     const mostSkips = room.players.reduce((a, b) => (room.stats[b.id]?.skips||0) > (room.stats[a.id]?.skips||0) ? b : a, room.players[0]);
@@ -222,13 +230,24 @@ io.on('connection', (socket) => {
   socket.on('typing_stop',  ({ code })           => socket.to(code).emit('user_stop_typing'));
 
   // 13. Reconnection
-  socket.on('reconnect_room', ({ code, username }) => {
+  socket.on('reconnect_room', ({ code, username, avatar }) => {
     const room = getRoom(code);
     if (!room) { socket.emit('room_error', { code: 'NOT_FOUND', message: 'Room expired.' }); return; }
-    const p = room.players.find(p => p.name === username);
-    if (p) { p.id = socket.id; p.status = 'online'; }
+    
+    let p = room.players.find(p => p.name === username);
+    if (p) {
+      p.id = socket.id;
+      p.status = 'online';
+      if (avatar) p.avatar = avatar;
+    } else {
+      // Re-add them if they were somehow missing but have the code
+      p = { id: socket.id, name: username, avatar: avatar || '🦊', score: 0, status: 'online', dares: 0, truths: 0, skips: 0 };
+      room.players.push(p);
+      if (!room.stats[socket.id]) room.stats[socket.id] = { dares: 0, truths: 0, skips: 0, completed: 0 };
+    }
+    
     socket.join(code);
-    socket.data.roomCode = code; // Track for next disconnect
+    socket.data.roomCode = code;
     socket.emit('room_state', room);
     io.to(code).emit('player_update', room.players);
     io.to(code).emit('system_message', { text: `${username} reconnected! ⚡`, time: now() });
@@ -257,6 +276,11 @@ io.on('connection', (socket) => {
           p.status = 'offline';
           io.to(code).emit('player_update', room.players);
           io.to(code).emit('system_message', { text: `${p.name} disconnected 😢`, time: now() });
+          
+          // If active player disconnects during selection, notify host
+          if (room.gameState === 'active' && room.players[room.currentTurn]?.id === socket.id) {
+            io.to(code).emit('system_message', { text: `It was ${p.name}'s turn. Host can skip them if they don't return.`, time: now() });
+          }
         }
       }
     }
@@ -280,7 +304,17 @@ io.on('connection', (socket) => {
 
 function advanceTurn(code, room) {
   if (room.players.length === 0) return;
-  room.currentTurn = (room.currentTurn + 1) % room.players.length;
+  
+  let nextTurn = (room.currentTurn + 1) % room.players.length;
+  let iterations = 0;
+  
+  // Skip offline players unless everyone is offline
+  while (room.players[nextTurn].status === 'offline' && iterations < room.players.length) {
+    nextTurn = (nextTurn + 1) % room.players.length;
+    iterations++;
+  }
+  
+  room.currentTurn = nextTurn;
   if (room.currentTurn === 0) room.round++;
   io.to(code).emit('turn_update', { currentTurn: room.currentTurn, round: room.round });
 }
