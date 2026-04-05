@@ -150,16 +150,43 @@ export default function App() {
     const s = io(SOCKET_URL, { 
       transports: ['polling', 'websocket'],
       reconnection: true,
-      reconnectionAttempts: 20,
+      reconnectionAttempts: 100, 
       reconnectionDelay: 2000,
-      timeout: 20000
+      timeout: 30000
     });
     setSocket(s);
     socketRef.current = s;
 
-    s.on('connect', () => setIsConnected(true));
-    s.on('disconnect', () => setIsConnected(false));
-    s.on('connect_error', () => setIsConnected(false));
+    s.on('connect', () => {
+      setIsConnected(true);
+      
+      // Auto-rejoin on every connect/reconnect if session exists
+      const stored = localStorage.getItem('daremate_session');
+      if (stored) {
+        try {
+          const { code, user, icon } = JSON.parse(stored);
+          setRoomCode(code);
+          setUsername(user);
+          setAvatar(icon);
+          isAutoRejoiningRef.current = true;
+          setIsAutoRejoining(true);
+          s.emit('reconnect_room', { code, username: user, avatar: icon });
+          console.log('🔄 Auto-rejoining room:', code);
+        } catch (e) { 
+          localStorage.removeItem('daremate_session');
+        }
+      }
+    });
+
+    s.on('disconnect', (reason) => {
+      setIsConnected(false);
+      console.log('🔌 Disconnected:', reason);
+    });
+
+    s.on('connect_error', (err) => {
+      setIsConnected(false);
+      console.error('⚠️ Connection Error:', err.message);
+    });
 
     s.on('room_state', r => {
       setPlayers(r.players);
@@ -295,22 +322,7 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [screen, roomCode]);
 
-  // ── Auto-rejoin on Mount ───────────────────────────────
-  useEffect(() => {
-    if (!socket) return;
-    const stored = localStorage.getItem('daremate_session');
-    if (stored) {
-      try {
-        const { code, user, icon } = JSON.parse(stored);
-        setRoomCode(code);
-        setUsername(user);
-        setAvatar(icon);
-        isAutoRejoiningRef.current = true;
-        setIsAutoRejoining(true);
-        socket.emit('reconnect_room', { code, username: user, avatar: icon });
-      } catch (e) { localStorage.removeItem('daremate_session'); }
-    }
-  }, [socket]);
+  // ── Auto-rejoin logic moved to socket connect event ──
 
   /* ── Helpers ──────────────────────────────────────────── */
   const copy = (t = roomCode) => {

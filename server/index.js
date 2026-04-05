@@ -30,6 +30,21 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// ── Keep Alive Endpoint (Render fix) ──────────────────────────────────────
+app.get("/keep-alive", async (req, res) => {
+  const start = Date.now();
+
+  // simulate small processing to keep Render from sleeping
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  res.json({
+    status: "alive",
+    uptime: process.uptime(),
+    responseTime: `${Date.now() - start}ms`
+  });
+});
+
+
 // ── Load questions ────────────────────────────────────────────────────────
 let questionsData = { categories: {} };
 try {
